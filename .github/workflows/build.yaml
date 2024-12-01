@@ -1,0 +1,116 @@
+name: Bot CI workflow
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      new_version: ${{ steps.bump_version.outputs.new_version }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Create new version tag
+        id: bump_version
+        run: |
+          # Get the latest tag
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+          
+          # Remove 'v' prefix and split version into parts
+          current_version=${latest_tag#v}
+          IFS='.' read -r major minor patch <<< "$current_version"
+          
+          # Increment patch version
+          new_patch=$((patch + 1))
+          new_version="$major.$minor.$new_patch"
+          
+          # Create and push new tag
+          new_tag="v$new_version"
+          git tag $new_tag
+          git push origin $new_tag
+          
+          echo "New version: $new_version"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+
+  build:
+    needs: bump-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          ref: main # Ensure we have the latest changes including version bump
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            .venv
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Build package
+        run: poetry run poetry build
+
+  build-container:
+    needs: [bump-version, build]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          ref: main # Ensure we have the latest changes including version bump
+
+      - name: Login to Yandex Cloud Container Registry
+        id: login-cr
+        uses: yc-actions/yc-cr-login@v2
+        with:
+          yc-sa-json-credentials: ${{ secrets.YANDEX_SA_KEY }}
+
+      - run: |
+          echo "Packaging docker image ..."
+          tag="${DOCKER_REGISTRY}/constractio-builder-bot"
+          version="${{ needs.bump-version.outputs.new_version }}"
+          docker build -t $tag:latest -t $tag:$version -t $tag:${{ github.sha }} .
+          docker push $tag --all-tags
+        env:
+          DOCKER_REGISTRY: cr.yandex/crp3oi5t3ppanjeivcsg
