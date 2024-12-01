@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "tg-bot"
+version = "0.1.4"
+description = ""
+authors = ["Ivanov Matwey <matveykai@list.ru>"]
+readme = "README.md"
+packages = [{include = "bot", from = "src"}]
+
+# Add this new section
+[tool.poetry.scripts]
+dev = "run:main"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+python-telegram-bot = {extras = ["webhooks"], version = "^21.7"}
+pydantic = "^2.9.2"
+pydantic-settings = "^2.6.1"
+langchain-openai = "^0.2.9"
+langchain-mistralai = "^0.2.2"
+fastapi = "^0.115.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
