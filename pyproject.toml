@@ -19,6 +19,7 @@ langchain-openai = "^0.2.9"
 langchain-mistralai = "^0.2.2"
 fastapi = "^0.115.5"
 wemake-python-styleguide = "^0.19.2"
+pre-commit = "^4.0.1"
 
 [build-system]
 requires = ["poetry-core"]
