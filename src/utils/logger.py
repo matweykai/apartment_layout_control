@@ -1,7 +1,5 @@
-import os
 import sys
 import logging
-from pathlib import Path
 from bot.config import config
 
 

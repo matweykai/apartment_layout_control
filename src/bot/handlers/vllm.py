@@ -30,41 +30,41 @@ class VLM:
                 mistral_api_base=config.MISTRAL_API_BASE,
             )
         else:
-            raise ValueError(f"Unsupported model provider: {config.MODEL_PROVIDER}")
+            raise ValueError(f'Unsupported model provider: {config.MODEL_PROVIDER}')
 
     async def process_image(self, image_bytes: io.BytesIO) -> str:
         image_bytes.seek(0)
-        prep_image = base64.b64encode(image_bytes.read()).decode("UTF-8")
+        prep_image = base64.b64encode(image_bytes.read()).decode('UTF-8')
 
         messages = [
             HumanMessage(
                 content=[
                     {
-                        "type": "image_url",
-                        "image_url": f"data:image/jpeg;base64,{prep_image}",
+                        'type': 'image_url',
+                        'image_url': f'data:image/jpeg;base64,{prep_image}',
                     },
-                    {"type": "text", "text": self._vision_prompt},
-                ]
+                    {'type': 'text', 'text': self._vision_prompt},
+                ],
             ),
         ]
 
         try:
             response = await self._model.ainvoke(messages)
-            self._logger.debug(f"Model answer: {response.content}")
+            self._logger.debug(f'Model answer: {response.content}')
         except Exception as ex:
-            self._logger.error(f"Error during vision model request. Info: {ex}")
+            self._logger.error(f'Error during vision model request. Info: {ex}')
             raise
 
         return response.content
-    
+
     async def process_text(self, user_text: str) -> str:
         llm_chain = self._text_prompt | self._model
 
         try:
             response = await llm_chain.ainvoke(input=user_text)
-            self._logger.debug(f"Model answer: {response.content}")
+            self._logger.debug(f'Model answer: {response.content}')
         except Exception as ex:
-            self._logger.error(f"Error during vision model request. Info: {ex}")
+            self._logger.error(f'Error during vision model request. Info: {ex}')
             raise
 
         return response.content
